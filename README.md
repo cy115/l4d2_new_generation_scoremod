@@ -1,0 +1,1 @@
+# l4d2_new_generation_scoremod
