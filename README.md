@@ -14,7 +14,7 @@
  5. Pills Bonus;
  6. Condition(When survivors made it to saferoom) Bonus.
 
-## ========== Main Parts ==========
+## ========== Per Parts ==========
  - Map Distance Bonus:
       - Comes from map value "VersusMaxCompletionScore"
       - Divided by survivor team size, and plus teamsize(g_iMapDistance)
