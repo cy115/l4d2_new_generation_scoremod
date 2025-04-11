@@ -8,13 +8,13 @@ native int NGSM_GetPermHealthBonus()
 native int NGSM_GetDamageBonus()
 native int NGSM_GetSkillBonus()
 native int NGSM_GetPillsBonus()
-native int NGSM_GetStateBonus()
+native int NGSM_GetConditionBonus()
 // Get Map Max bonus
 native int NGSM_GetMaxPermHealthBonus()
 native int NGSM_GetMaxDamageBonus()
 native int NGSM_GetMaxSkillBonus()
 native int NGSM_GetMaxPillsBonus()
-native int NGSM_GetMaxStateBonus()
+native int NGSM_GetMaxConditionBonus()
 
 public SharedPlugin __pl_l4d2_new_generation_scoremod = {
     name = "l4d2_new_generation_scoremod",
@@ -35,13 +35,13 @@ public void __pl_l4d2_new_generation_scoremod_SetNTVOptional()
     MarkNativeAsOptional("NGSM_GetDamageBonus");
     MarkNativeAsOptional("NGSM_GetSkillBonus");
     MarkNativeAsOptional("NGSM_GetPillsBonus");
-    MarkNativeAsOptional("NGSM_GetStateBonus");
+    MarkNativeAsOptional("NGSM_GetConditionBonus");
     //===============================================//
     MarkNativeAsOptional("NGSM_GetMaxChapterBonus");
     MarkNativeAsOptional("NGSM_GetMaxPermHealthBonus");
     MarkNativeAsOptional("NGSM_GetMaxDamageBonus");
     MarkNativeAsOptional("NGSM_GetMaxSkillBonus");
     MarkNativeAsOptional("NGSM_GetMaxPillsBonus");
-    MarkNativeAsOptional("NGSM_GetMaxStateBonus");
+    MarkNativeAsOptional("NGSM_GetMaxConditionBonus");
 }
 #endif
