@@ -1,46 +1,3 @@
-/*
- * -------------------------------------------------------------------
- * ---------------Introduce of new generation sourcemod---------------
- * -------------------------------------------------------------------
- * 
- * ===================================================================
- * ===========================Main Parts==============================
- * ===================================================================
- * 
- * The score system Includes six parts:
- * 1. Map Distance Bonus;
- * 2. Permanent Health Bonus;
- * 3. Damage Bonus;
- * 4. Great Skill Bonus;
- * 5. Pills Bonus;
- * 6. Condition(When survivors made it to saferoom) Bonus.
- * 
- * ===================================================================
- * ============================Per Parts==============================
- * ===================================================================
- * Ⅰ. Map Distance Bonus:
- *      Comes from map value "VersusMaxCompletionScore", divided by
- *      survivor team size, and plus teamsize(g_iMapDistance);
- * Ⅱ. Permanent Health Bonus:
- *      One basic evidence of surviors` power, come form survior`s 
- *      Permanent health, and once survivor incapacitate, his Bonus
- *      decrease to 0;
- * Ⅲ. Damage Bonus:
- *      Now the damage bonus is more reliable then the origin one which
- *      make survivors lose almost all bonus after a player died, and 
- *      lead to hope even more remote;
- * Ⅳ. Great Skill Bonus:
- *      This part of bonus depend on "l4d2_skill_detect", when survivors
- *      make nice skill they will get SB(skill bonus) until it comes to
- *      the cap, and infected can also do skill to deduct surs` SB;
- * Ⅴ. Pills Bonus:
- *      It`s the same as origin pills bonus, per pills equal distance 
- *      bonuse divided by 20;
- * Ⅵ. Condition Bonus:
- *      Just a consolation prize for survivors so they may not get a "0"
- *      when made it to saferoom after hardships.
-*/
-
 // Pragma //////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
@@ -58,9 +15,12 @@
 #include <left4dhooks>
 #include <colors>
 #include <l4d2lib>
-#include <dhooks>
 #undef REQUIRE_PLUGIN
 #include <l4d2_skill_detect>
+
+// Variables ///////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 
 int
     g_iTeamSize,
@@ -108,12 +68,8 @@ bool
     // tier breaker
     g_bTiebreakerEligibility[2];
 
-StringMap
-    g_smMissionMap;
-
 // Game Cvars
 ConVar
-    g_hCvarValveMpGameMode,
     g_hCvarValveTieBreaker,
     g_hCvarValveDefibPenalty,
     g_hCvarValveSurivivalBonus;
@@ -131,7 +87,7 @@ public Plugin myinfo =
     name = "L4D2 New Generation ScoreMod",
     author = "Hitomi",
     description = "New Generation ScoreMod for Versus",
-    version = "1.1",
+    version = "1.2",
     url = "https://github.com/cy115/"
 };
 
@@ -216,7 +172,6 @@ public int Native_GetMaxConditionBonus(Handle plugin, int numParams) {
 
 public void OnPluginStart()
 {
-    g_smMissionMap = new StringMap();
     // Get Game Cvars
     g_hCvarValveTieBreaker = FindConVar("vs_tiebreak_bonus");
     g_hCvarValveDefibPenalty = FindConVar("vs_defib_penalty");
@@ -252,21 +207,20 @@ public void OnPluginStart()
 
 public void OnPluginEnd()
 {
-    ResetConVar(g_hCvarValveTieBreaker);
-    ResetConVar(g_hCvarValveDefibPenalty);
-    ResetConVar(g_hCvarValveSurivivalBonus);
+    g_hCvarValveTieBreaker.RestoreDefault();
+    g_hCvarValveDefibPenalty.RestoreDefault();
+    g_hCvarValveSurivivalBonus.RestoreDefault();
 }
 
 public void OnConfigsExecuted()
 {
     // 初始化生还人数，奖励分
     g_iTeamSize = FindConVar("survivor_limit").IntValue;
-    SetConVarInt(g_hCvarValveTieBreaker, 0);
-    SetConVarInt(g_hCvarValveDefibPenalty, 0);
-    SetConVarInt(g_hCvarValveSurivivalBonus, 0);
+    g_hCvarValveTieBreaker.SetInt(0);
+    g_hCvarValveDefibPenalty.SetInt(0);
+    g_hCvarValveSurivivalBonus.SetInt(0);
     // 初始化地图路程(分)
     g_iMapMaxDistance = L4D2_GetMapValueInt("max_distance", L4D_GetVersusMaxCompletionScore());
-    
     L4D_SetVersusMaxCompletionScore(g_iMapMaxDistance);
     g_iMapDistance = (g_iMapMaxDistance / 4) * g_iTeamSize;
     
@@ -327,24 +281,24 @@ public Action L4D2_OnEndVersusModeRound(bool countSurvivors)
     // 所有得分
     g_fSurvivorBonus[team] = g_fSurvivorMainBonus[team] + g_fSurvivorSkillBonus[team];
     if (iSurvivalMultiplier > 0 && RoundToFloor(g_fSurvivorBonus[team] / iSurvivalMultiplier) >= g_iTeamSize) {
-        SetConVarInt(g_hCvarValveSurivivalBonus, RoundToFloor(g_fSurvivorMainBonus[team] / iSurvivalMultiplier));
+        g_hCvarValveSurivivalBonus.SetInt(RoundToFloor(g_fSurvivorMainBonus[team] / iSurvivalMultiplier));
         g_fSurvivorMainBonus[team] = float(g_hCvarValveSurivivalBonus.IntValue * iSurvivalMultiplier);
     }
     else {
         g_fSurvivorBonus[team] = 0.0;
-        SetConVarInt(g_hCvarValveSurivivalBonus, 0);
-        SetConVarInt(g_hCvarValveDefibPenalty, 0);
+        g_hCvarValveSurivivalBonus.SetInt(0);
+        g_hCvarValveDefibPenalty.SetInt(0);
         g_bTiebreakerEligibility[team] = (iSurvivalMultiplier == g_iTeamSize);
     }
 
-    SetConVarInt(g_hCvarValveDefibPenalty, -RoundToFloor(g_fSurvivorSkillBonus[team]));
+    g_hCvarValveDefibPenalty.SetInt(-RoundToFloor(g_fSurvivorSkillBonus[team]));
     GameRules_SetProp("m_iVersusDefibsUsed", (RoundToFloor(g_fSurvivorSkillBonus[team]) == 0) ? 0 : 1, 4, GameRules_GetProp("m_bAreTeamsFlipped", 4, 0));
 
     if (team > 0 && g_bTiebreakerEligibility[0] && g_bTiebreakerEligibility[1]) {
         GameRules_SetProp("m_iChapterDamage", g_iSiDamage[0], _, 0, true);
         GameRules_SetProp("m_iChapterDamage", g_iSiDamage[1], _, 1, true);
         if (g_iSiDamage[0] != g_iSiDamage[1]) {
-            SetConVarInt(g_hCvarValveTieBreaker, g_iPillWorth);
+            g_hCvarValveTieBreaker.SetInt(g_iPillWorth);
         }
     }
 
@@ -389,9 +343,6 @@ public Action OnTakeDamage(int victim, int &attacker, int &inflictor, float &dam
 void Event_RoundStart(Event event, const char[] name, bool dontBroadcast)
 {
     g_bRoundOver = false;
-    if (IsCoop()) {
-        g_iLostDamageBonus[0] = g_iLostDamageBonus[1] = 0;
-    }
 }
 
 void Event_PlayerIncapacitated(Event event, const char[] name, bool dontBroadcast)
@@ -440,12 +391,12 @@ public Action Cmd_Bonus(int client, int args) // 打印分数信息到聊天栏
     CPrintToChat(client, "{blue}R{default}#{olive}%i {default}Bonus: {blue}%d {default}<{blue}%.1f%%{default}>", 
         InSecondHalfOfRound() + 1, totalBonus, 
         CalculateBonusPercent(fPermHealthBonus + fDamageBonus + fSkillBonus + fPillsBonus + fConditionBonus, g_fMapBonus));
-    CPrintToChat(client, "{default}[ {blue}HB{default}: {olive}%.0f%% {default}| {blue}DB{default}: {olive}%.0f%% {default}| {blue}SB{default}: {olive}%.0f%% {default}| {blue}PB{default}: {olive}%.0f%% {default}| {blue}CB{default}: {olive}%.0f%% {default}]", 
+    CPrintToChat(client, "{default}[ {blue}HB{default}: {olive}%.0f%% {default}| {blue}DB{default}: {olive}%.0f%% {default}| {blue}SB{default}: {olive}%.0f%% {default}| {blue}PB{default}: {olive}%.0f%% {default}| {blue}SB2{default}: {olive}%.0f%% {default}]", 
         CalculateBonusPercent(fPermHealthBonus, g_fPermHealthBonus), CalculateBonusPercent(fDamageBonus, g_fDamageBonus), 
         CalculateBonusPercent(g_fSkillGainBonus[InSecondHalfOfRound()], g_fSkillBonus), CalculateBonusPercent(fPillsBonus, float(g_iPillsBonus)), 
         CalculateBonusPercent(fConditionBonus, g_fConditionBonus));
     // R#1 Bonus: 1145 <81%>
-    // [HB: 20% | DB: 50% | SB: 56% | PB: 75% | CB: 50%]
+    // [HB: 20% | DB: 50% | SB: 56% | PB: 75% | SB2: 50%]
 
     return Plugin_Handled;
 }
@@ -648,13 +599,7 @@ public void OnSpecialClear(int clearer, int pinner, int pinvictim, int zombieCla
     }
 }
 
-public void OnSkeet(int survivor, int hunter) {
-    if (g_fSkillGainBonus[InSecondHalfOfRound()] < g_fSkillBonus) {
-        g_fSkillGainBonus[InSecondHalfOfRound()] = g_fSkillGainBonus[InSecondHalfOfRound()] + g_f5Percents >= g_fSkillBonus ? g_fSkillBonus : g_fSkillGainBonus[InSecondHalfOfRound()] + g_f5Percents;
-    }
-}
-
-public void OnSkeetMelee(int survivor, int hunter) {
+public void OnHunterSkeet(int survivor, int hunter) {
     if (g_fSkillGainBonus[InSecondHalfOfRound()] < g_fSkillBonus) {
         g_fSkillGainBonus[InSecondHalfOfRound()] = g_fSkillGainBonus[InSecondHalfOfRound()] + g_f5Percents >= g_fSkillBonus ? g_fSkillBonus : g_fSkillGainBonus[InSecondHalfOfRound()] + g_f5Percents;
     }
@@ -666,9 +611,50 @@ public void OnChargerLevelHurt(int survivor, int charger, int damage) {
     }
 }
 
+public void OnWitchCrown(int survivor, int damage) {
+    if (g_fSkillGainBonus[InSecondHalfOfRound()] < g_fSkillBonus) {
+        g_fSkillGainBonus[InSecondHalfOfRound()] = g_fSkillGainBonus[InSecondHalfOfRound()] + g_f10Percents >= g_fSkillBonus ? g_fSkillBonus : g_fSkillGainBonus[InSecondHalfOfRound()] + g_f10Percents;
+    }
+}
+
+public void OnWitchCrownHurt(int survivor, int damage, int chipdamage) {
+    if (g_fSkillGainBonus[InSecondHalfOfRound()] < g_fSkillBonus) {
+        g_fSkillGainBonus[InSecondHalfOfRound()] = g_fSkillGainBonus[InSecondHalfOfRound()] + g_f10Percents >= g_fSkillBonus ? g_fSkillBonus : g_fSkillGainBonus[InSecondHalfOfRound()] + g_f10Percents;
+    }
+}
+
 public void OnTongueCut(int survivor, int smoker) {
     if (g_fSkillGainBonus[InSecondHalfOfRound()] < g_fSkillBonus) {
         g_fSkillGainBonus[InSecondHalfOfRound()] = g_fSkillGainBonus[InSecondHalfOfRound()] + g_f5Percents >= g_fSkillBonus ? g_fSkillBonus : g_fSkillGainBonus[InSecondHalfOfRound()] + g_f5Percents;
+    }
+}
+
+public void OnChargerMultiImapct(int charger, int impactcount) {
+    switch (impactcount) {
+        case 2: {
+            if (g_fSkillGainBonus[InSecondHalfOfRound()] >= g_f5Percents) {
+                g_fSkillGainBonus[InSecondHalfOfRound()] -= g_f5Percents;
+            }
+            else {
+                g_fSkillGainBonus[InSecondHalfOfRound()] = 0.0;
+            }
+        }
+        case 3: {
+            if (g_fSkillGainBonus[InSecondHalfOfRound()] >= g_f10Percents) {
+                g_fSkillGainBonus[InSecondHalfOfRound()] -= g_f10Percents;
+            }
+            else {
+                g_fSkillGainBonus[InSecondHalfOfRound()] = 0.0;
+            }
+        }
+        case 4: {
+            if (g_fSkillGainBonus[InSecondHalfOfRound()] >= g_f20Percents) {
+                g_fSkillGainBonus[InSecondHalfOfRound()] -= g_f20Percents;
+            }
+            else {
+                g_fSkillGainBonus[InSecondHalfOfRound()] = 0.0;
+            }
+        }
     }
 }
 
@@ -689,6 +675,105 @@ public void OnDeathCharge(int charger, int survivor, float height, float distanc
     }
     else {
         g_fSkillGainBonus[InSecondHalfOfRound()] = 0.0;
+    }
+}
+
+public void OnInfectedMultiControl(int pinnedSurs) {
+    switch (pinnedSurs) {
+        case 3: {
+            if (g_fSkillGainBonus[InSecondHalfOfRound()] >= g_f20Percents) {
+                g_fSkillGainBonus[InSecondHalfOfRound()] -= g_f20Percents;
+            }
+            else {
+                g_fSkillGainBonus[InSecondHalfOfRound()] = 0.0;
+            }
+        }
+        case 4: {
+            if (g_fSkillGainBonus[InSecondHalfOfRound()] >= g_f50Percents) {
+                g_fSkillGainBonus[InSecondHalfOfRound()] -= g_f50Percents;
+            }
+            else {
+                g_fSkillGainBonus[InSecondHalfOfRound()] = 0.0;
+            }
+        }
+    }
+}
+
+public void OnInfectedSuddenControl(int pinnedSurs, float pinnedTime) {
+    switch (pinnedSurs) {
+        case 2: {
+            if (g_fSkillGainBonus[InSecondHalfOfRound()] >= g_f10Percents) {
+                g_fSkillGainBonus[InSecondHalfOfRound()] -= g_f10Percents;
+            }
+            else {
+                g_fSkillGainBonus[InSecondHalfOfRound()] = 0.0;
+            }
+        }
+        case 3: {
+            if (g_fSkillGainBonus[InSecondHalfOfRound()] >= g_f50Percents) {
+                g_fSkillGainBonus[InSecondHalfOfRound()] -= g_f50Percents;
+            }
+            else {
+                g_fSkillGainBonus[InSecondHalfOfRound()] = 0.0;
+            }
+        }
+        case 4: {
+            g_fSkillGainBonus[InSecondHalfOfRound()] = 0.0;
+        }
+    }
+}
+
+public void OnTankPunchMultiPlayer(int tank, int punchcount) {
+    switch (punchcount) {
+        case 2: {
+            if (g_fSkillGainBonus[InSecondHalfOfRound()] >= g_f5Percents) {
+                g_fSkillGainBonus[InSecondHalfOfRound()] -= g_f5Percents;
+            }
+            else {
+                g_fSkillGainBonus[InSecondHalfOfRound()] = 0.0;
+            }
+        }
+        case 3: {
+            if (g_fSkillGainBonus[InSecondHalfOfRound()] >= g_f10Percents) {
+                g_fSkillGainBonus[InSecondHalfOfRound()] -= g_f10Percents;
+            }
+            else {
+                g_fSkillGainBonus[InSecondHalfOfRound()] = 0.0;
+            }
+        }
+        case 4: {
+            if (g_fSkillGainBonus[InSecondHalfOfRound()] >= g_f20Percents) {
+                g_fSkillGainBonus[InSecondHalfOfRound()] -= g_f20Percents;
+            }
+            else {
+                g_fSkillGainBonus[InSecondHalfOfRound()] = 0.0;
+            }
+        }
+    }
+}
+
+public void OnTankAttackHittables(int tank, int incapcount)
+{
+    switch (incapcount) {
+        case 2: {
+            if (g_fSkillGainBonus[InSecondHalfOfRound()] >= g_f10Percents) {
+                g_fSkillGainBonus[InSecondHalfOfRound()] -= g_f10Percents;
+            }
+            else {
+                g_fSkillGainBonus[InSecondHalfOfRound()] = 0.0;
+            }
+        }
+        case 3: {
+            if (g_fSkillGainBonus[InSecondHalfOfRound()] >= g_f50Percents) {
+                g_fSkillGainBonus[InSecondHalfOfRound()] -= g_f50Percents;
+            }
+            else {
+                g_fSkillGainBonus[InSecondHalfOfRound()] = 0.0;
+            }
+        }
+        case 4: {
+            g_fSkillGainBonus[InSecondHalfOfRound()] = 0.0;
+        }
     }
 }
 
